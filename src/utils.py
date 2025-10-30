@@ -2,10 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-
 import torchvision
 import torchvision.transforms as transforms
-
 import numpy as np
 import random
 import math
@@ -32,14 +30,11 @@ class CutMix:
         
         batch_size = batch.size(0)
         lam = np.random.beta(self.alpha, self.alpha)
-        
         rand_index = torch.randperm(batch_size).to(batch.device)
         
         bbx1, bby1, bbx2, bby2 = self.rand_bbox(batch.size(), lam)
-        batch[:, :, bbx1:bbx2, bby1:bby2] = batch[rand_index, :, bbx1:bbx2, bby1:bby2]
-        
+        batch[:, :, bbx1:bbx2, bby1:by2] = batch[rand_index, :, bbx1:bbx2, bby1:by2]
         lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (batch.size(-1) * batch.size(-2)))
-        
         return batch, labels, labels[rand_index], lam
     
     def rand_bbox(self, size, lam):
@@ -48,15 +43,12 @@ class CutMix:
         cut_rat = np.sqrt(1. - lam)
         cut_w = int(W * cut_rat)
         cut_h = int(H * cut_rat)
-        
         cx = np.random.randint(W)
         cy = np.random.randint(H)
-        
         bbx1 = np.clip(cx - cut_w // 2, 0, W)
         bby1 = np.clip(cy - cut_h // 2, 0, H)
         bbx2 = np.clip(cx + cut_w // 2, 0, W)
         bby2 = np.clip(cy + cut_h // 2, 0, H)
-        
         return bbx1, bby1, bbx2, bby2
 
 class MixUp:
@@ -71,16 +63,12 @@ class MixUp:
         
         batch_size = batch.size(0)
         lam = np.random.beta(self.alpha, self.alpha)
-        
         rand_index = torch.randperm(batch_size).to(batch.device)
-        
         mixed_batch = lam * batch + (1 - lam) * batch[rand_index]
-        
         return mixed_batch, labels, labels[rand_index], lam
 
 def get_dataloaders(batch_size=128, num_workers=2):
     """Get CIFAR-10 dataloaders with augmentations."""
-    # Strong augmentation for training
     transform_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
@@ -92,13 +80,11 @@ def get_dataloaders(batch_size=128, num_workers=2):
         transforms.RandomErasing(p=0.25, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
     ])
     
-    # Standard normalization for testing
     transform_test = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616)),
     ])
     
-    # Load CIFAR-10 dataset
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                             download=True, transform=transform_train)
     trainloader = DataLoader(trainset, batch_size=batch_size,
@@ -115,7 +101,7 @@ def get_dataloaders(batch_size=128, num_workers=2):
     return trainloader, testloader, classes
 
 class LabelSmoothingLoss(nn.Module):
-    """Label smoothing loss for better generalization."""
+    """Label smoothing loss."""
     def __init__(self, num_classes=10, smoothing=0.1):
         super().__init__()
         self.num_classes = num_classes
@@ -131,7 +117,7 @@ class LabelSmoothingLoss(nn.Module):
         return torch.mean(torch.sum(-true_dist * F.log_softmax(pred, dim=-1), dim=-1))
 
 def mixup_criterion(criterion, pred, y_a, y_b, lam):
-    """Loss function for MixUp/CutMix augmentation."""
+    """Loss function for MixUp/CutMix."""
     return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
 
 class WarmupCosineScheduler:
@@ -145,10 +131,8 @@ class WarmupCosineScheduler:
     
     def step(self, epoch):
         if epoch < self.warmup_epochs:
-            # Linear warmup
             lr = self.base_lr * (epoch + 1) / self.warmup_epochs
         else:
-            # Cosine annealing
             progress = (epoch - self.warmup_epochs) / (self.total_epochs - self.warmup_epochs)
             lr = self.min_lr + (self.base_lr - self.min_lr) * 0.5 * (1 + math.cos(math.pi * progress))
         

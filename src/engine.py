@@ -1,7 +1,6 @@
 import torch
 import random
 from tqdm import tqdm
-
 # We import our own custom loss function from our utils file
 from .utils import mixup_criterion
 
@@ -16,7 +15,6 @@ def train_epoch(model, dataloader, criterion, optimizer, device, mixup_fn=None, 
     for batch_idx, (inputs, targets) in enumerate(pbar):
         inputs, targets = inputs.to(device), targets.to(device)
         
-        # Apply MixUp or CutMix
         if mixup_fn is not None and random.random() < 0.5:
             inputs, targets_a, targets_b, lam = mixup_fn(inputs, targets)
             outputs = model(inputs)
@@ -32,15 +30,11 @@ def train_epoch(model, dataloader, criterion, optimizer, device, mixup_fn=None, 
         
         optimizer.zero_grad()
         loss.backward()
-        
-        # Gradient clipping
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        
         optimizer.step()
         
         running_loss += loss.item()
         
-        # Calculate accuracy (approximate for mixup/cutmix)
         _, predicted = outputs.max(1)
         if lam == 1:
             total += targets.size(0)

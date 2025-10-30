@@ -1,0 +1,9 @@
+torch
+torchvision
+einops
+timm
+warmup_scheduler
+numpy
+matplotlib
+tqdm
+jupyter
